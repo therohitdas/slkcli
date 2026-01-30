@@ -1,6 +1,6 @@
 ---
 name: slk
-description: Read, send, search, and manage Slack messages via the slk CLI. Use when the user asks to check Slack, read channels, send Slack messages, search Slack, check unreads, manage drafts, or interact with Slack workspace. Also use for heartbeat Slack checks.
+description: Read, send, search, and manage Slack messages via the slk CLI. Use when the user asks to check Slack, read channels, send Slack messages, search Slack, check unreads, manage drafts, view saved items, or interact with Slack workspace. Also use for heartbeat Slack checks.
 ---
 
 # slk — Slack CLI
