@@ -25,10 +25,14 @@ npx slkcli auth
 Add to your AI agent (Claude Code, Codex, Moltbot, etc.):
 
 ```bash
+# ClawdHub
+clawdhub install slack-personal
+
+# skills.sh
 npx skills add therohitdas/slkcli
 ```
 
-Also available on [ClawdHub](https://clawhub.ai).
+Browse on [ClawdHub](https://www.clawhub.ai/therohitdas/slack-personal).
 
 ## Quickstart
 
