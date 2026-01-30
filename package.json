@@ -7,11 +7,11 @@
   "author": "Rohit Das",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/therohitdas/slk.git"
+    "url": "git+https://github.com/therohitdas/slkcli.git"
   },
-  "homepage": "https://github.com/therohitdas/slk",
+  "homepage": "https://github.com/therohitdas/slkcli",
   "bugs": {
-    "url": "https://github.com/therohitdas/slk/issues"
+    "url": "https://github.com/therohitdas/slkcli/issues"
   },
   "keywords": [
     "slack",
@@ -25,7 +25,7 @@
     "messaging"
   ],
   "bin": {
-    "slk": "./bin/slk.js"
+    "slk": "bin/slk.js"
   },
   "files": [
     "bin/",
