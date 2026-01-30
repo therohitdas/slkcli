@@ -24,6 +24,8 @@ Usage:
   slk react <channel> <ts> <emoji>      React to a message
   slk activity                          Show all channel activity
   slk unread                            Show only channels with unreads
+  slk starred                           Show VIP users + starred items
+  slk pins <channel>                    Show pinned items in a channel
 
 Drafts (synced to Slack):
   slk draft <channel> <message>         Draft a channel message
@@ -91,6 +93,17 @@ async function main() {
       case "unread":
       case "ur":
         await cmd.activity(true);
+        break;
+
+      case "starred":
+      case "star":
+        await cmd.starred();
+        break;
+
+      case "pins":
+      case "pin":
+        if (!args[1]) { console.error("Usage: slk pins <channel>"); process.exit(1); }
+        await cmd.pins(args[1]);
         break;
 
       case "drafts":

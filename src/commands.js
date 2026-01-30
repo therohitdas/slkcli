@@ -251,6 +251,87 @@ export async function activity(unreadOnly = false) {
   }
 }
 
+export async function starred() {
+  const users = await getUsers();
+
+  // Get VIP users from prefs
+  const prefs = await slackApi("users.prefs.get", {});
+  const vipIds = prefs.ok ? (prefs.prefs?.vip_users || "").split(",").filter(Boolean) : [];
+
+  if (vipIds.length > 0) {
+    console.log("👑 VIP Users:");
+    for (const uid of vipIds) {
+      console.log(`   ${userName(users, uid)} (${uid})`);
+    }
+    console.log();
+  }
+
+  // Build channel name map
+  const chData = await slackPaginate("conversations.list", {
+    types: "public_channel,private_channel,mpim,im",
+    exclude_archived: true,
+  });
+  const chMap = {};
+  if (chData.ok) {
+    for (const ch of chData.channels) {
+      chMap[ch.id] = ch.name || (ch.user ? `DM:${userName(users, ch.user)}` : ch.id);
+    }
+  }
+
+  // Get starred items
+  const stars = await slackApi("stars.list", { count: 50 });
+  if (!stars.ok) {
+    console.error(`Error: ${stars.error}`);
+    process.exit(1);
+  }
+
+  if (stars.items?.length > 0) {
+    console.log("⭐ Starred:");
+    for (const item of stars.items) {
+      if (item.type === "message") {
+        const msg = item.message || {};
+        const ch = chMap[item.channel] || item.channel;
+        const who = userName(users, msg.user);
+        console.log(`   #${ch} — ${who}: ${(msg.text || "").substring(0, 100)}`);
+      } else if (item.type === "channel") {
+        console.log(`   #${chMap[item.channel] || item.channel}`);
+      } else if (item.type === "im") {
+        console.log(`   💬 ${chMap[item.channel] || item.channel}`);
+      } else if (item.type === "file") {
+        console.log(`   📎 ${item.file?.name || "?"}`);
+      }
+    }
+  } else {
+    console.log("⭐ No starred items.");
+  }
+}
+
+export async function pins(channelRef) {
+  const channel = await resolveChannel(channelRef);
+  const users = await getUsers();
+
+  const data = await slackApi("pins.list", { channel });
+  if (!data.ok) {
+    console.error(`Error: ${data.error}`);
+    process.exit(1);
+  }
+
+  if (!data.items?.length) {
+    console.log("No pinned items.");
+    return;
+  }
+
+  console.log(`📌 ${data.items.length} pinned items:\n`);
+  for (const item of data.items) {
+    const msg = item.message || {};
+    const who = userName(users, msg.user);
+    const time = formatTs(msg.ts);
+    console.log(`[${time}] ${who}:`);
+    console.log(`  ${(msg.text || "").substring(0, 200)}`);
+    console.log();
+  }
+}
+
 export async function react(channelRef, ts, emoji) {
   const channel = await resolveChannel(channelRef);
   const data = await slackApi("reactions.add", {
