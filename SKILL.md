@@ -1,13 +1,25 @@
 ---
-name: slk
-description: Read, send, search, and manage Slack messages via the slk CLI. Use when the user asks to check Slack, read channels, send Slack messages, search Slack, check unreads, manage drafts, view saved items, or interact with Slack workspace. Also use for heartbeat Slack checks.
+name: slack-personal
+description: Read, send, search, and manage Slack messages via the slk CLI. Use when the user asks to check Slack, read channels, send Slack messages, search Slack, check unreads, manage drafts, view saved items, or interact with Slack workspace. Also use for heartbeat Slack checks. Triggers on "check slack", "any slack messages", "send on slack", "slack unreads", "search slack".
+homepage: https://www.npmjs.com/package/slkcli
+metadata: {"moltbot":{"emoji":"💬","requires":{"bins":["slk"]},"install":[{"id":"npm","kind":"node","package":"slkcli","bins":["slk"],"label":"Install slk (npm)"}],"os":["darwin"]}}
 ---
 
 # slk — Slack CLI
 
-Session-based Slack CLI for macOS. Auto-authenticates from the Slack desktop app (no tokens or app installs needed).
+Session-based Slack CLI for macOS. Auto-authenticates from the Slack desktop app — no tokens or app installs needed.
 
-**Requires:** `slk` installed (`npm i -g slkcli`), Slack desktop app running on macOS.
+## Auth
+
+Automatic — extracts session token from Slack desktop app's LevelDB + decrypts cookie from macOS Keychain. Caches in `~/.local/slk/token-cache.json`.
+
+**First run:** macOS Keychain dialog → choose "Always Allow" for convenience.
+
+If auth fails (token rotated):
+```bash
+rm ~/.local/slk/token-cache.json
+slk auth
+```
 
 ## Commands
 
@@ -43,24 +55,12 @@ slk draft drop <draft_id>             # Delete a draft
 
 Channel accepts name (`ai-coding`) or ID (`C08A8AQ2AFP`).
 
-## Auth
-
-Auth is automatic — extracts session token from Slack desktop app's LevelDB + decrypts cookie from macOS Keychain. Caches working token in `~/.local/slk/token-cache.json`.
-
-**First run:** macOS will show a Keychain dialog asking to allow access to "Slack Safe Storage". Choose "Allow" (one-time) or "Always Allow" (permanent, no future prompts). "Always Allow" is convenient but means any process running as your user can extract credentials silently.
-
-If auth fails: ensure Slack desktop app is running. If token rotated, delete cache and retry:
-```bash
-rm ~/.local/slk/token-cache.json
-slk auth
-```
-
-## Known Limitations
-
-- **macOS only** — uses Keychain + Electron storage paths.
-- **Draft drop** may fail with `draft_has_conflict` if Slack desktop has that conversation open. Navigate away in Slack first.
-- **Session token** expires if user logs out of Slack. Keep app running.
-
 ## Heartbeat Usage
 
-For periodic Slack checks, use `slk unread` to get channels with unreads (respects mute settings). Follow up with `slk read <channel>` for channels that need attention.
+Use `slk unread` to get channels with unreads (respects mute). Follow up with `slk read <channel>` for important ones.
+
+## Limitations
+
+- **macOS only** — uses Keychain + Electron storage paths
+- **Draft drop** may fail with `draft_has_conflict` if Slack has that conversation open
+- **Session token** expires on logout — keep Slack app running
