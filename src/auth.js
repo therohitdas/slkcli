@@ -14,7 +14,27 @@ import { pbkdf2Sync } from "crypto";
 
 import { existsSync, mkdirSync } from "fs";
 
-const SLACK_DIR = join(homedir(), "Library", "Application Support", "Slack");
+const SLACK_DIR_DIRECT = join(homedir(), "Library", "Application Support", "Slack");
+const SLACK_DIR_APPSTORE = join(
+  homedir(),
+  "Library", "Containers", "com.tinyspeck.slackmacgap",
+  "Data", "Library", "Application Support", "Slack"
+);
+
+function resolveSlackDir() {
+  if (existsSync(SLACK_DIR_DIRECT)) return SLACK_DIR_DIRECT;
+  if (existsSync(SLACK_DIR_APPSTORE)) return SLACK_DIR_APPSTORE;
+  console.error(
+    "Could not find Slack data directory.\n" +
+    "Checked:\n" +
+    `  ${SLACK_DIR_DIRECT}\n` +
+    `  ${SLACK_DIR_APPSTORE}\n` +
+    "Is Slack installed?"
+  );
+  process.exit(1);
+}
+
+const SLACK_DIR = resolveSlackDir();
 const LEVELDB_DIR = join(SLACK_DIR, "Local Storage", "leveldb");
 const COOKIES_DB = join(SLACK_DIR, "Cookies");
 const CACHE_DIR = join(homedir(), ".local", "slk");
@@ -23,11 +43,24 @@ const TOKEN_CACHE = join(CACHE_DIR, "token-cache.json");
 let cachedCreds = null;
 
 function getKeychainKey() {
-  return Buffer.from(
-    execSync('security find-generic-password -s "Slack Safe Storage" -w', {
-      encoding: "utf-8",
-    }).trim()
-  );
+  // Mac App Store Slack uses account "Slack App Store Key", direct download uses "Slack"
+  const accounts = SLACK_DIR === SLACK_DIR_APPSTORE
+    ? ["Slack App Store Key", "Slack"]
+    : ["Slack", "Slack App Store Key"];
+
+  for (const account of accounts) {
+    try {
+      return Buffer.from(
+        execSync(
+          `security find-generic-password -s "Slack Safe Storage" -a "${account}" -w`,
+          { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
+        ).trim()
+      );
+    } catch {}
+  }
+
+  console.error("Could not find Slack Safe Storage key in Keychain.");
+  process.exit(1);
 }
 
 function decryptCookie() {
@@ -111,7 +144,7 @@ function extractToken() {
   try {
     const pyResult = spawnSync("python3", ["-c", `
 import os, re
-path = os.path.expanduser("~/Library/Application Support/Slack/Local Storage/leveldb")
+path = ${JSON.stringify(LEVELDB_DIR)}
 for f in os.listdir(path):
     if not (f.endswith(".ldb") or f.endswith(".log")): continue
     data = open(os.path.join(path, f), "rb").read()
