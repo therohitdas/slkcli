@@ -145,9 +145,9 @@ On first run, macOS will show a Keychain dialog asking whether to allow access t
 
 ### How it works
 
-1. **Cookie decryption** — Reads the encrypted `d` cookie from Slack's SQLite cookie store (`~/Library/Application Support/Slack/Cookies`). Decrypts it using the "Slack Safe Storage" key from the macOS Keychain via PBKDF2 + AES-128-CBC.
+1. **Cookie decryption** — Reads the encrypted `d` cookie from Slack's SQLite cookie store (`Cookies` file). Decrypts it using the "Slack Safe Storage" key from the macOS Keychain via PBKDF2 + AES-128-CBC. Supports both direct-download and Mac App Store keychain account names.
 
-2. **Token extraction** — Scans Slack's LevelDB storage (`~/Library/Application Support/Slack/Local Storage/leveldb/`) for `xoxc-` session tokens. Uses both direct regex scanning and a Python fallback for Snappy-compressed entries.
+2. **Token extraction** — Scans Slack's LevelDB storage (`Local Storage/leveldb/`) for `xoxc-` session tokens. Uses both direct regex scanning and a Python fallback for Snappy-compressed entries. The Slack data directory is auto-detected (direct download or App Store sandbox).
 
 3. **Validation** — Tests each candidate token against `auth.test` with the decrypted cookie. The first valid pair is used.
 
@@ -177,8 +177,8 @@ Validated tokens are cached to avoid re-extracting on every invocation:
 | Data | Source | Purpose |
 |------|--------|---------|
 | Keychain password | `security find-generic-password -s "Slack Safe Storage"` | Derive AES key for cookie decryption |
-| Encrypted cookie | `~/Library/Application Support/Slack/Cookies` (SQLite) | Decrypt the `d` session cookie (`xoxd-`) |
-| Session token | `~/Library/Application Support/Slack/Local Storage/leveldb/` | Extract `xoxc-` token |
+| Encrypted cookie | `<slack-data-dir>/Cookies` (SQLite) | Decrypt the `d` session cookie (`xoxd-`) |
+| Session token | `<slack-data-dir>/Local Storage/leveldb/` | Extract `xoxc-` token |
 
 ## Agent usage patterns
 
@@ -241,6 +241,7 @@ npm link                   # symlink globally for development
 ## Notes
 
 - **macOS only** — uses Keychain and Electron storage paths specific to macOS.
+- **Both Slack variants supported** — works with the direct download (`~/Library/Application Support/Slack/`) and the Mac App Store version (`~/Library/Containers/com.tinyspeck.slackmacgap/.../Slack/`). The correct path is auto-detected at runtime.
 - **Slack desktop app required** — must be installed and logged in. The app does not need to be running for cached tokens.
 - **Zero dependencies** — uses only Node.js built-in modules (`crypto`, `fs`, `child_process`, `fetch`).
 - **Session-based** — uses `xoxc-` tokens (user session), not bot tokens. This means you act as yourself.
