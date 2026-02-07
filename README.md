@@ -143,9 +143,24 @@ On first run, macOS will show a Keychain dialog asking whether to allow access t
 
 > **Caution:** Choosing "Always Allow" means any process running as your user that invokes the `slk` binary (or the `security` command targeting "Slack Safe Storage") can read the encryption key without a prompt. This is convenient but reduces the security boundary — any code running in your terminal (scripts, agents, other CLI tools) could trigger credential extraction silently. On a personal machine this is a reasonable trade-off. On a shared or managed machine, prefer "Allow" so you get prompted each time and maintain visibility into access.
 
+### Slack versions
+
+Both Slack installation methods are supported:
+
+| Version | Install source | Data location |
+|---------|----------------|---------------|
+| **Direct download** | slack.com | `~/Library/Application Support/Slack/` |
+| **Mac App Store** | App Store | `~/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application Support/Slack/` |
+
+**Mac App Store users:** Create a symlink so slk can find the data:
+
+```bash
+ln -s ~/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application\ Support/Slack ~/Library/Application\ Support/Slack
+```
+
 ### How it works
 
-1. **Cookie decryption** — Reads the encrypted `d` cookie from Slack's SQLite cookie store (`~/Library/Application Support/Slack/Cookies`). Decrypts it using the "Slack Safe Storage" key from the macOS Keychain via PBKDF2 + AES-128-CBC.
+1. **Cookie decryption** — Reads the encrypted `d` cookie from Slack's SQLite cookie store (`~/Library/Application Support/Slack/Cookies`). Decrypts it using the "Slack Safe Storage" key from the macOS Keychain via PBKDF2 + AES-128-CBC. Supports both direct-download (`Slack` account) and Mac App Store (`Slack App Store Key` account) keychain entries.
 
 2. **Token extraction** — Scans Slack's LevelDB storage (`~/Library/Application Support/Slack/Local Storage/leveldb/`) for `xoxc-` session tokens. Uses both direct regex scanning and a Python fallback for Snappy-compressed entries.
 

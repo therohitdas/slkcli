@@ -23,11 +23,23 @@ const TOKEN_CACHE = join(CACHE_DIR, "token-cache.json");
 let cachedCreds = null;
 
 function getKeychainKey() {
-  return Buffer.from(
-    execSync('security find-generic-password -s "Slack Safe Storage" -w', {
-      encoding: "utf-8",
-    }).trim()
-  );
+  // Try Mac App Store account first, then fall back to direct-download account.
+  // App Store version uses account "Slack App Store Key", direct-download uses "Slack".
+  // Both use the same service name "Slack Safe Storage".
+  try {
+    return Buffer.from(
+      execSync('security find-generic-password -s "Slack Safe Storage" -a "Slack App Store Key" -w', {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim()
+    );
+  } catch {
+    return Buffer.from(
+      execSync('security find-generic-password -s "Slack Safe Storage" -a "Slack" -w', {
+        encoding: "utf-8",
+      }).trim()
+    );
+  }
 }
 
 function decryptCookie() {
