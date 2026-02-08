@@ -78,6 +78,7 @@ slk react general 1234567890.123456 thumbsup
 |---------|-------|-------------|
 | `slk auth` | | Test authentication, show user/team info |
 | `slk channels` | `ch` | List all channels with member counts |
+| `slk dms` | `dm` | List DM conversations with IDs |
 | `slk users` | `u` | List workspace users with statuses |
 | `slk read <channel> [count]` | `r` | Read recent messages (default: 20) |
 | `slk send <channel> <message>` | `s` | Send a message to a channel |
@@ -95,6 +96,9 @@ slk react general 1234567890.123456 thumbsup
 | Flag | Description |
 |------|-------------|
 | `--ts` | Show raw Slack timestamps (useful for getting ts to read threads) |
+| `--threads` | Auto-expand all threads when reading messages |
+| `--from YYYY-MM-DD` | Read messages from this date onwards |
+| `--to YYYY-MM-DD` | Read messages until this date |
 | `--no-emoji` | Disable emoji in output (or set `NO_EMOJI=1`) |
 | `--all` | Include completed items in `slk saved` |
 
@@ -127,6 +131,31 @@ Channels can be specified by **name** or **ID** in any command:
 slk read general           # by name
 slk read ai-coding         # by name
 slk read C08A8AQ2AFP       # by ID
+```
+
+### DMs
+
+Read, send, and react to DMs using `@username` or user ID:
+
+```bash
+# List all DM conversations
+slk dms
+
+# Read DMs by username
+slk read @andrej 50
+slk read @nikhil 100 --threads    # auto-expand threads
+
+# Read DMs with date range
+slk read @andrej 100 --from 2026-02-01 --to 2026-02-07 --threads
+
+# Send DM
+slk send @andrej "hey, check this out"
+
+# React to DM message
+slk react @andrej 1769753479.788949 fire
+
+# By user ID (U...)
+slk read U07RQTFCLUC 50
 ```
 
 ## Authentication
