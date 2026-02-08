@@ -43,10 +43,10 @@ const TOKEN_CACHE = join(CACHE_DIR, "token-cache.json");
 let cachedCreds = null;
 
 function getKeychainKey() {
-  // Mac App Store Slack uses account "Slack App Store Key", direct download uses "Slack"
+  // Mac App Store Slack uses account "Slack App Store Key", direct download uses "Slack" or "Slack Key"
   const accounts = SLACK_DIR === SLACK_DIR_APPSTORE
-    ? ["Slack App Store Key", "Slack"]
-    : ["Slack", "Slack App Store Key"];
+    ? ["Slack App Store Key", "Slack Key", "Slack"]
+    : ["Slack Key", "Slack", "Slack App Store Key"];
 
   for (const account of accounts) {
     try {
