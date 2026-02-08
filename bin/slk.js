@@ -19,6 +19,7 @@ const HELP = `${e("💬")}slk — Slack CLI for macOS (auto-auth from Slack desk
 Commands:
   slk auth                                Test auth, show user/team info
   slk channels          (ch)              List channels with member counts
+  slk dms               (dm)              List DM conversations with IDs
   slk users             (u)               List workspace users with statuses
   slk read <ch> [n]     (r)               Read last n messages (default: 20)
   slk send <ch> <msg>   (s)               Send a message
@@ -40,17 +41,25 @@ Drafts (synced to Slack UI):
 
 Settings:
   --ts                                    Show raw Slack timestamps (for thread commands)
+  --threads                               Auto-expand threads when reading
+  --from YYYY-MM-DD                       Read messages from this date
+  --to YYYY-MM-DD                         Read messages until this date
   --no-emoji                              Disable emoji output (or set NO_EMOJI=1)
 
-Channels: name ("general") or ID ("C08A8AQ2AFP"). Aliases shown in parens.
+Channels: name ("general"), ID ("C08A8AQ2AFP"), @username, or user ID ("U...").
+DMs: use @username or user ID to send/read DMs. Aliases shown in parens.
 
 Examples:
   slk read general 50                     Last 50 messages from #general
+  slk read @andrej 100 --threads          Read DM with Andrej, expand all threads
+  slk read @nikhil --from 2026-02-01      Read DM from Feb 1st onwards
+  slk send @andrej "hey!"                 Send DM to Andrej
   slk send engineering "build passed"     Send to #engineering
   slk search "deploy failed" 10           Search with limit
   slk thread general 1706000000.000000    Read a thread
-  slk react general 1706000000.000000 eyes  React with :eyes:
+  slk react @andrej 1706000000.000000 eyes  React to DM message
   slk draft general "PR summary..."       Save draft in Slack UI
+  slk dms                                 List all DM conversations
   slk unread                              What needs attention?
 
 Auth: reads credentials from the Slack desktop app automatically.
@@ -69,11 +78,32 @@ async function main() {
         await cmd.channels();
         break;
 
-      case "read":
-      case "r":
-        if (!args[1]) { console.error("Usage: slk read <channel> [count] [--ts]"); process.exit(1); }
-        await cmd.read(args[1], parseInt(args[2]) || 20, showTs);
+      case "dms":
+      case "dm":
+        await cmd.dms();
         break;
+
+      case "read":
+      case "r": {
+        if (!args[1]) { console.error("Usage: slk read <channel|@user> [count] [--ts] [--threads] [--from YYYY-MM-DD] [--to YYYY-MM-DD]"); process.exit(1); }
+        const expandThreads = args.includes("--threads");
+        const fromIdx = args.indexOf("--from");
+        const toIdx = args.indexOf("--to");
+        let oldest = null, latest = null;
+        if (fromIdx > -1 && args[fromIdx + 1]) {
+          oldest = String(new Date(args[fromIdx + 1]).getTime() / 1000);
+        }
+        if (toIdx > -1 && args[toIdx + 1]) {
+          latest = String(new Date(args[toIdx + 1]).getTime() / 1000);
+        }
+        // Find count (first numeric arg after channel)
+        let count = 20;
+        for (let i = 2; i < args.length; i++) {
+          if (/^\d+$/.test(args[i])) { count = parseInt(args[i]); break; }
+        }
+        await cmd.read(args[1], count, { showTs, oldest, latest, expandThreads });
+        break;
+      }
 
       case "send":
       case "s":

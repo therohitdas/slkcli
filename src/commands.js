@@ -25,9 +25,37 @@ function userName(users, id) {
 }
 
 async function resolveChannel(nameOrId) {
+  // Already a channel/DM/group ID
   if (nameOrId.startsWith("C") || nameOrId.startsWith("D") || nameOrId.startsWith("G")) {
-    return nameOrId; // Already an ID
+    return nameOrId;
   }
+  
+  // User ID → open DM and return channel ID
+  if (nameOrId.startsWith("U")) {
+    const dm = await slackApi("conversations.open", { users: nameOrId });
+    if (!dm.ok) throw new Error(`Failed to open DM with ${nameOrId}: ${dm.error}`);
+    return dm.channel.id;
+  }
+  
+  // @username or username → find user, open DM
+  if (nameOrId.startsWith("@") || !nameOrId.includes("#")) {
+    const username = nameOrId.replace(/^@/, "").toLowerCase();
+    const users = await getUsers();
+    const usersData = await slackPaginate("users.list", {}, "members");
+    if (usersData.ok) {
+      const user = usersData.members.find(
+        (u) => u.name?.toLowerCase() === username || 
+               u.real_name?.toLowerCase() === username ||
+               u.profile?.display_name?.toLowerCase() === username
+      );
+      if (user) {
+        const dm = await slackApi("conversations.open", { users: user.id });
+        if (dm.ok) return dm.channel.id;
+      }
+    }
+  }
+  
+  // Channel name
   const name = nameOrId.replace(/^#/, "");
   const data = await slackPaginate("conversations.list", {
     types: "public_channel,private_channel,mpim,im",
@@ -75,13 +103,32 @@ export async function channels() {
   }
 }
 
-export async function read(channelRef, count = 20, showTs = false) {
+export async function dms() {
+  const users = await getUsers();
+  const data = await slackPaginate("conversations.list", {
+    types: "im",
+    exclude_archived: true,
+  });
+  if (!data.ok) {
+    console.error(`Error: ${data.error}`);
+    process.exit(1);
+  }
+  for (const ch of data.channels) {
+    const name = userName(users, ch.user);
+    console.log(`💬 ${name}  (${ch.id})`);
+  }
+}
+
+export async function read(channelRef, count = 20, options = {}) {
+  const { showTs = false, oldest = null, latest = null, expandThreads = false } = options;
   const channel = await resolveChannel(channelRef);
   const users = await getUsers();
-  const data = await slackApi("conversations.history", {
-    channel,
-    limit: count,
-  });
+  
+  const params = { channel, limit: count };
+  if (oldest) params.oldest = oldest;
+  if (latest) params.latest = latest;
+  
+  const data = await slackApi("conversations.history", params);
   if (!data.ok) {
     console.error(`Error: ${data.error}`);
     process.exit(1);
@@ -98,6 +145,29 @@ export async function read(channelRef, count = 20, showTs = false) {
     if (msg.files?.length) {
       for (const f of msg.files) {
         console.log(`  📎 ${f.name} (${f.mimetype})`);
+      }
+    }
+    
+    // Auto-expand threads
+    if (expandThreads && msg.reply_count > 0) {
+      const replies = await slackApi("conversations.replies", {
+        channel,
+        ts: msg.ts,
+        limit: 100,
+      });
+      if (replies.ok && replies.messages?.length > 1) {
+        for (const reply of replies.messages.slice(1)) { // skip parent
+          const replyWho = userName(users, reply.user);
+          const replyTime = formatTs(reply.ts);
+          const replyTsStr = showTs ? ` ts:${reply.ts}` : "";
+          console.log(`    ↳ [${replyTime}${replyTsStr}] ${replyWho}:`);
+          console.log(`      ${reply.text}`);
+          if (reply.files?.length) {
+            for (const f of reply.files) {
+              console.log(`      📎 ${f.name} (${f.mimetype})`);
+            }
+          }
+        }
       }
     }
     console.log();
