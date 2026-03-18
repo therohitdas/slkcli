@@ -175,6 +175,30 @@ for f in os.listdir(path):
     }
   } catch {}
 
+  // Method 3: Scan IndexedDB blob files (fallback when LevelDB has no tokens)
+  if (tokens.size === 0) {
+    const idbBase = join(SLACK_DIR, "IndexedDB");
+    try {
+      const scanDir = (dir) => {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          const full = join(dir, entry.name);
+          if (entry.isDirectory()) {
+            scanDir(full);
+          } else {
+            try {
+              const raw = readFileSync(full);
+              const content = raw.toString("latin1");
+              for (const m of content.matchAll(/xoxc-[a-zA-Z0-9_.-]{20,}/g)) {
+                tokens.add(m[0]);
+              }
+            } catch {}
+          }
+        }
+      };
+      if (existsSync(idbBase)) scanDir(idbBase);
+    } catch {}
+  }
+
   if (tokens.size === 0) {
     throw new Error("No xoxc- token found. Is Slack running?");
   }
