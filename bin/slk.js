@@ -6,8 +6,20 @@
 
 import * as cmd from "../src/commands.js";
 import * as drafts from "../src/drafts.js";
+import { setWorkspace } from "../src/auth.js";
 
 const args = process.argv.slice(2);
+
+const workspaceIdx = args.findIndex((a) => a === "--workspace" || a.startsWith("--workspace="));
+if (workspaceIdx > -1) {
+  const [flag] = args.splice(workspaceIdx, 1);
+  const name = flag.startsWith("--workspace=")
+    ? flag.slice("--workspace=".length)
+    : args.splice(workspaceIdx, 1)[0];
+  if (!name) { console.error("Usage: slk <command> --workspace <name|domain|team_id>"); process.exit(1); }
+  setWorkspace(name);
+}
+
 const command = args[0];
 
 const supportsEmoji = !process.env.NO_EMOJI && !process.argv.includes("--no-emoji");
@@ -41,6 +53,7 @@ Drafts (synced to Slack UI):
   slk draft drop <id>                     Delete a draft
 
 Settings:
+  --workspace <name>                      Use this workspace (name, domain, or team ID)
   --ts                                    Show raw Slack timestamps (for thread commands)
   --threads                               Auto-expand threads when reading
   --from YYYY-MM-DD                       Read messages from this date
@@ -63,9 +76,10 @@ Examples:
   slk draft general "PR summary..."       Save draft in Slack UI
   slk dms                                 List all DM conversations
   slk unread                              What needs attention?
+  slk unread --workspace acme             Unreads in the Acme workspace
 
 Auth: reads credentials from the Slack desktop app automatically.
-Cache: ~/.local/slk/token-cache.json (auto-validated, auto-refreshed).
+Cache: ~/.local/slk/token-cache*.json (one per workspace, auto-validated, auto-refreshed).
 Docs:  https://github.com/therohitdas/slkcli`;
 
 async function main() {
@@ -118,10 +132,13 @@ async function main() {
         await cmd.upload(args[1], args[2], args.slice(3).join(" "));
         break;
 
-      case "search":
+      case "search": {
         if (!args[1]) { console.error("Usage: slk search <query> [count]"); process.exit(1); }
-        await cmd.search(args.slice(1).join(" "), parseInt(args[args.length - 1]) || 20);
+        const words = args.slice(1);
+        const count = words.length > 1 && /^\d+$/.test(words.at(-1)) ? parseInt(words.pop()) : 20;
+        await cmd.search(words.join(" "), count);
         break;
+      }
 
       case "thread":
       case "t":

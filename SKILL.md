@@ -14,6 +14,7 @@ Session-based Slack CLI for macOS. Auto-authenticates from the Slack desktop app
 ```bash
 # Auth
 slk auth                              # Test authentication, show user/team
+slk auth --workspace acme             # Any command: use another workspace (name, domain, or team ID)
 
 # Read
 slk channels                          # List channels (alias: ch)
@@ -57,11 +58,11 @@ Automatic — extracts session token from Slack desktop app's LevelDB + decrypts
 - **Always Allow** — permanent, no future prompts (convenient but any process running as your user can extract credentials silently)
 - **Deny** — blocks access, slk cannot authenticate
 
-**Token cache:** `~/.local/slk/token-cache.json` — auto-validated, auto-refreshed on `invalid_auth`.
+**Token cache:** `~/.local/slk/token-cache.json` (`token-cache-<workspace>.json` with `--workspace`) — auto-validated, auto-refreshed on `invalid_auth`.
 
 If auth fails (token rotated, Slack logged out):
 ```bash
-rm ~/.local/slk/token-cache.json
+rm ~/.local/slk/token-cache*.json
 slk auth
 ```
 

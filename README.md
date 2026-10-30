@@ -100,6 +100,7 @@ slk react general 1234567890.123456 thumbsup
 
 | Flag | Description |
 |------|-------------|
+| `--workspace <name>` | Use this workspace instead of the default. Accepts the workspace name, domain (`acme` in `acme.slack.com`), or team ID |
 | `--ts` | Show raw Slack timestamps (useful for getting ts to read threads) |
 | `--threads` | Auto-expand all threads when reading messages |
 | `--from YYYY-MM-DD` | Read messages from this date onwards |
@@ -186,7 +187,7 @@ On first run, macOS will show a Keychain dialog asking whether to allow access t
 
 2. **Token extraction** — Scans Slack's LevelDB storage (`Local Storage/leveldb/`) for `xoxc-` session tokens. Uses both direct regex scanning and a Python fallback for Snappy-compressed entries. The Slack data directory is auto-detected (direct download or App Store sandbox).
 
-3. **Validation** — Tests each candidate token against `auth.test` with the decrypted cookie. The first valid pair is used.
+3. **Validation** — Tests each candidate token against `auth.test` with the decrypted cookie. The first valid pair is used, or the first one for the `--workspace` you asked for.
 
 4. **Auto-refresh** — On `invalid_auth`, credentials are re-extracted and the request is retried once automatically.
 
@@ -196,7 +197,7 @@ Validated tokens are cached to avoid re-extracting on every invocation:
 
 | | |
 |---|---|
-| **Cache file** | `~/.local/slk/token-cache.json` |
+| **Cache file** | `~/.local/slk/token-cache.json` (with `--workspace acme`: `token-cache-acme.json`) |
 | **Format** | `{ "token": "xoxc-...", "ts": 1706000000000 }` |
 | **Behavior** | Load cache → validate with Slack API → use if valid, otherwise re-extract from LevelDB |
 | **In-memory** | Within a single process, credentials are cached in memory after first load |

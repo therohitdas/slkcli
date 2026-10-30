@@ -38,9 +38,18 @@ const SLACK_DIR = resolveSlackDir();
 const LEVELDB_DIR = join(SLACK_DIR, "Local Storage", "leveldb");
 const COOKIES_DB = join(SLACK_DIR, "Cookies");
 const CACHE_DIR = join(homedir(), ".local", "slk");
-const TOKEN_CACHE = join(CACHE_DIR, "token-cache.json");
 
 let cachedCreds = null;
+let workspace = null;
+
+export function setWorkspace(name) {
+  workspace = name.toLowerCase();
+}
+
+function tokenCachePath() {
+  const suffix = workspace ? `-${encodeURIComponent(workspace)}` : "";
+  return join(CACHE_DIR, `token-cache${suffix}.json`);
+}
 
 function getKeychainKey() {
   // Mac App Store Slack uses account "Slack App Store Key", direct download uses "Slack" or "Slack Key"
@@ -187,8 +196,8 @@ for f in os.listdir(path):
 
 function loadTokenCache() {
   try {
-    if (existsSync(TOKEN_CACHE)) {
-      return JSON.parse(readFileSync(TOKEN_CACHE, "utf-8"));
+    if (existsSync(tokenCachePath())) {
+      return JSON.parse(readFileSync(tokenCachePath(), "utf-8"));
     }
   } catch {}
   return null;
@@ -197,11 +206,11 @@ function loadTokenCache() {
 function saveTokenCache(token) {
   try {
     mkdirSync(CACHE_DIR, { recursive: true });
-    writeFileSync(TOKEN_CACHE, JSON.stringify({ token, ts: Date.now() }));
+    writeFileSync(tokenCachePath(), JSON.stringify({ token, ts: Date.now() }));
   } catch {}
 }
 
-function validateToken(token, cookie) {
+function authTest(token, cookie) {
   try {
     const result = spawnSync("curl", [
       "-s", "https://slack.com/api/auth.test",
@@ -209,10 +218,19 @@ function validateToken(token, cookie) {
       "-b", `d=${cookie}`,
     ], { encoding: "utf-8", timeout: 10000 });
     const data = JSON.parse(result.stdout);
-    return data.ok;
+    return data.ok ? data : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function teamDomain(team) {
+  return new URL(team.url).hostname.split(".")[0];
+}
+
+function matchesWorkspace(team) {
+  if (!workspace) return true;
+  return [team.team, team.team_id, teamDomain(team)].some((v) => v.toLowerCase() === workspace);
 }
 
 export function getCredentials(forceRefresh = false) {
@@ -223,7 +241,8 @@ export function getCredentials(forceRefresh = false) {
   // Try cached token first (fastest path)
   if (!forceRefresh) {
     const cache = loadTokenCache();
-    if (cache?.token && validateToken(cache.token, cookie)) {
+    const team = cache?.token && authTest(cache.token, cookie);
+    if (team && matchesWorkspace(team)) {
       cachedCreds = { token: cache.token, cookie };
       return cachedCreds;
     }
@@ -233,12 +252,21 @@ export function getCredentials(forceRefresh = false) {
   const candidates = extractToken();
 
   // Validate each candidate
+  const teams = [];
   for (const token of candidates) {
-    if (validateToken(token, cookie)) {
+    const team = authTest(token, cookie);
+    if (!team) continue;
+    if (matchesWorkspace(team)) {
       saveTokenCache(token);
       cachedCreds = { token, cookie };
       return cachedCreds;
     }
+    teams.push(team);
+  }
+
+  if (workspace) {
+    const available = teams.map((t) => `${t.team} (${teamDomain(t)})`);
+    throw new Error(`No signed-in workspace matches "${workspace}". Available: ${available.join(", ") || "none"}`);
   }
 
   // Fallback: return first candidate
